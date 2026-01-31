@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import { DetectionPreview, DetectionSummary } from '@/components/detector';
 import {
@@ -12,30 +11,22 @@ import {
 } from '@/constants/config';
 import { Colors } from '@/constants/theme';
 import { detectDogMuzzle } from '@/lib/api';
-import { dataUriToBlob, releaseMediaAttachment, resolveImageDimensions } from '@/lib/media';
+import { releaseMediaAttachment, resolveImageDimensions } from '@/lib/media';
 import type { DetectionResponse, MediaAttachment, MediaType } from '@/types/detection';
 
 type RequestStatus = 'idle' | 'loading' | 'error' | 'success';
-type CameraFacing = 'front' | 'back';
 
 const mediaOptions: { label: string; type: MediaType; hint: string }[] = [
   { type: 'image', label: 'Изображение', hint: 'PNG, JPG' },
   { type: 'video', label: 'Видео', hint: 'MP4, MOV' },
-  { type: 'stream', label: 'Стрим с камеры', hint: 'Прямой эфир' },
 ];
 
 export default function HomeScreen() {
   const [mediaType, setMediaType] = useState<MediaType>('image');
   const [attachment, setAttachment] = useState<MediaAttachment | null>(null);
-  const [cameraFrame, setCameraFrame] = useState<MediaAttachment | null>(null);
   const [status, setStatus] = useState<RequestStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DetectionResponse | null>(null);
-  const [cameraFacing, setCameraFacing] = useState<CameraFacing>('back');
-  const [isCameraReady, setCameraReady] = useState(false);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const cameraRef = useRef<CameraView | null>(null);
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const annotatedResultRef = useRef<MediaAttachment | null>(null);
 
   const apiLabel = USE_MOCK_RESPONSES ? 'Демо режим · мок данные' : API_BASE_URL;
@@ -45,8 +36,6 @@ export default function HomeScreen() {
         DETECT_VIDEO_ENDPOINT,
         API_BASE_URL
       )}`;
-
-  const hasCameraPermission = Boolean(cameraPermission?.granted);
 
   useEffect(() => {
     return () => {
@@ -61,19 +50,8 @@ export default function HomeScreen() {
     annotatedResultRef.current = result?.annotatedMedia ?? null;
   }, [result?.annotatedMedia]);
 
-  useEffect(() => {
-    if (mediaType !== 'stream') {
-      setCameraFrame(null);
-    }
-  }, [mediaType]);
-
   const clearMedia = useCallback(() => {
     setAttachment(null);
-    setResult(null);
-  }, []);
-
-  const clearCameraFrame = useCallback(() => {
-    setCameraFrame(null);
     setResult(null);
   }, []);
 
@@ -115,74 +93,16 @@ export default function HomeScreen() {
     }
   }, [mediaType]);
 
-  const handleRequestCameraPermission = useCallback(async () => {
-    if (!requestCameraPermission) {
-      return;
-    }
-    const response = await requestCameraPermission();
-    if (!response.granted) {
-      Alert.alert('Нужен доступ к камере');
-    }
-  }, [requestCameraPermission]);
-
-  const handleToggleFacing = useCallback(() => {
-    setCameraFacing(prev => (prev === 'back' ? 'front' : 'back'));
-  }, []);
-
-  const handleCaptureFrame = useCallback(async () => {
-    if (!cameraRef.current) {
-      return;
-    }
-    try {
-      setIsCapturing(true);
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
-      const cameraCapture: MediaAttachment = {
-        uri: photo.uri,
-        name: `camera-${Date.now()}.jpg`,
-        mimeType: 'image/jpeg',
-        capturedAt: Date.now(),
-        width: photo.width,
-        height: photo.height,
-      };
-      if (Platform.OS === 'web' && photo.uri?.startsWith('data:')) {
-        const blob = dataUriToBlob(photo.uri, 'image/jpeg');
-        if (blob) {
-          cameraCapture.file = blob;
-        }
-      }
-      setCameraFrame(cameraCapture);
-      setResult(null);
-      setError(null);
-    } catch (err) {
-      console.log(err);
-      Alert.alert('Не удалось получить кадр с камеры');
-    } finally {
-      setIsCapturing(false);
-    }
-  }, []);
-
   const handleDetect = useCallback(async () => {
     setStatus('loading');
     setError(null);
     try {
-      if (mediaType === 'stream') {
-        if (!hasCameraPermission) {
-          await handleRequestCameraPermission();
-          if (!cameraPermission?.granted) {
-            throw new Error('Нужно разрешить доступ к камере.');
-          }
-        }
-        if (!cameraFrame) {
-          throw new Error('Сделайте кадр с камеры, чтобы отправить его в потоковую модель.');
-        }
+      if (!attachment) {
+        throw new Error('Прикрепите файл для анализа.');
       }
-
       const response = await detectDogMuzzle({
         mediaType,
-        attachment:
-          mediaType === 'stream'
-            ? cameraFrame ?? undefined
-            : attachment ?? undefined,
+        attachment,
       });
       setResult(response);
       setStatus('success');
@@ -195,17 +115,14 @@ export default function HomeScreen() {
         setError('Неизвестная ошибка');
       }
     }
-  }, [attachment, cameraFrame, cameraPermission?.granted, handleRequestCameraPermission, hasCameraPermission, mediaType]);
+  }, [attachment, mediaType]);
 
   const isDetectDisabled = useMemo(() => {
     if (status === 'loading') {
       return true;
     }
-    if (mediaType === 'stream') {
-      return !cameraFrame;
-    }
     return !attachment;
-  }, [attachment, cameraFrame, mediaType, status]);
+  }, [attachment, status]);
 
   const helperText = useMemo(() => {
     if (status === 'error' && error) {
@@ -214,26 +131,13 @@ export default function HomeScreen() {
     if (status === 'success' && result?.message) {
       return result.message;
     }
-    if (mediaType === 'stream') {
-      if (!hasCameraPermission) {
-        return 'Выдайте доступ к камере, чтобы включить прямой эфир.';
-      }
-      if (!cameraFrame) {
-        return 'Нажмите «Сделать кадр», мы отправим снимок как часть стрима.';
-      }
-      return cameraFrame.capturedAt
-        ? `Кадр записан ${new Date(cameraFrame.capturedAt).toLocaleTimeString()}`
-        : 'Кадр записан, можно запускать инференс.';
-    }
     if (!attachment) {
       return 'Прикрепите файл, который уйдёт в инференс на бэкенд.';
     }
     return `${attachment.name ?? 'Файл'} (${formatFileSize(attachment.size)})`;
-  }, [attachment, cameraFrame, error, hasCameraPermission, mediaType, result?.message, status]);
+  }, [attachment, error, result?.message, status]);
 
-  const previewAttachment =
-    result?.annotatedMedia ??
-    (mediaType === 'stream' ? cameraFrame ?? undefined : attachment ?? undefined);
+  const previewAttachment = result?.annotatedMedia ?? attachment ?? undefined;
 
   const summaryHint = useMemo(() => {
     if (result?.mediaType === 'video') {
@@ -247,7 +151,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.logo}>DogMuzzle</Text>
         <Text style={styles.subtitle}>
-          Проверка наличия намордника на изображениях, видео и прямом эфире с камеры.
+          Проверка наличия намордника на изображениях и видео.
         </Text>
         <View style={styles.apiBadge}>
           <Text style={styles.apiBadgeLabel}>Backend</Text>
@@ -258,7 +162,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>1. Загрузите файл или включите камеру</Text>
+      <Text style={styles.sectionTitle}>1. Загрузите файл</Text>
       <View style={styles.mediaOptions}>
         {mediaOptions.map(option => {
           const isActive = option.type === mediaType;
@@ -266,13 +170,12 @@ export default function HomeScreen() {
             <Pressable
               key={option.type}
               onPress={() => {
+                if (mediaType !== option.type) {
+                  setAttachment(null);
+                  setResult(null);
+                }
                 setMediaType(option.type);
                 setError(null);
-                if (option.type === 'stream') {
-                  setAttachment(null);
-                } else {
-                  setCameraFrame(null);
-                }
               }}
               style={[styles.mediaOption, isActive && styles.mediaOptionActive]}>
               <Text style={[styles.mediaOptionText, isActive && styles.mediaOptionTextActive]}>
@@ -286,87 +189,32 @@ export default function HomeScreen() {
         })}
       </View>
 
-      {mediaType === 'stream' ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Поток с камеры устройства</Text>
-          <View style={styles.cameraShell}>
-            {hasCameraPermission ? (
-              <CameraView
-                style={styles.camera}
-                ref={cameraRef}
-                facing={cameraFacing}
-                onCameraReady={() => setCameraReady(true)}
-              />
-            ) : (
-              <View style={[styles.camera, styles.cameraPlaceholder]}>
-                <Text style={styles.cameraPlaceholderText}>
-                  Нужен доступ к камере, чтобы транслировать поток.
-                </Text>
-                <Pressable style={styles.secondaryButton} onPress={handleRequestCameraPermission}>
-                  <Text style={styles.secondaryButtonText}>Выдать доступ</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-          {hasCameraPermission ? (
-            <View style={styles.cameraActions}>
-              <Pressable style={styles.secondaryButton} onPress={handleToggleFacing}>
-                <Text style={styles.secondaryButtonText}>Поменять камеру</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.secondaryButton, styles.captureButton]}
-                onPress={handleCaptureFrame}
-                disabled={!isCameraReady || isCapturing}>
-                <Text style={styles.secondaryButtonText}>
-                  {isCapturing ? 'Снимаем…' : 'Сделать кадр'}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-          {cameraFrame ? (
-            <View style={styles.fileRow}>
-              <Text style={styles.fileName}>Кадр сохранён</Text>
-              <Pressable style={styles.clearBtn} onPress={clearCameraFrame}>
-                <Text style={styles.clearBtnText}>Сбросить</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Text style={styles.cardHint}>
-              Сделайте кадр и отправьте его на сервер — он будет обработан как текущий поток.
-            </Text>
-          )}
-          <Text style={[styles.cardHint, status === 'error' && styles.errorText]}>{helperText}</Text>
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Прикрепление файла</Text>
-          {attachment ? (
-            <View style={styles.fileRow}>
-              <View>
-                <Text style={styles.fileName}>{attachment.name ?? 'Без имени'}</Text>
-                <Text style={styles.fileMeta}>
-                  {attachment.mimeType ?? 'unknown'} · {formatFileSize(attachment.size)}
-                </Text>
-              </View>
-              <View style={styles.fileActions}>
-                <Pressable style={styles.clearBtn} onPress={clearMedia}>
-                  <Text style={styles.clearBtnText}>Очистить</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <Pressable style={styles.uploadArea} onPress={handlePick}>
-              <Text style={styles.uploadText}>Выбрать {mediaType === 'video' ? 'видео' : 'фото'}</Text>
-              <Text style={styles.uploadHint}>
-                {mediaType === 'video'
-                  ? 'Поддерживаются mp4/mov до 150 МБ'
-                  : 'JPG/PNG до 25 МБ'}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Прикрепление файла</Text>
+        {attachment ? (
+          <View style={styles.fileRow}>
+            <View>
+              <Text style={styles.fileName}>{attachment.name ?? 'Без имени'}</Text>
+              <Text style={styles.fileMeta}>
+                {attachment.mimeType ?? 'unknown'} · {formatFileSize(attachment.size)}
               </Text>
-            </Pressable>
-          )}
-          <Text style={[styles.cardHint, status === 'error' && styles.errorText]}>{helperText}</Text>
-        </View>
-      )}
+            </View>
+            <View style={styles.fileActions}>
+              <Pressable style={styles.clearBtn} onPress={clearMedia}>
+                <Text style={styles.clearBtnText}>Очистить</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Pressable style={styles.uploadArea} onPress={handlePick}>
+            <Text style={styles.uploadText}>Выбрать {mediaType === 'video' ? 'видео' : 'фото'}</Text>
+            <Text style={styles.uploadHint}>
+              {mediaType === 'video' ? 'Поддерживаются mp4/mov до 150 МБ' : 'JPG/PNG до 25 МБ'}
+            </Text>
+          </Pressable>
+        )}
+        <Text style={[styles.cardHint, status === 'error' && styles.errorText]}>{helperText}</Text>
+      </View>
 
       <Pressable
         style={[styles.detectButton, isDetectDisabled && styles.detectButtonDisabled]}
@@ -573,45 +421,5 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#B91C1C',
-  },
-  cameraShell: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#CBD5F5',
-  },
-  camera: {
-    width: '100%',
-    aspectRatio: 3 / 4,
-  },
-  cameraPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'rgba(15, 23, 42, 0.05)',
-  },
-  cameraPlaceholderText: {
-    color: '#475569',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  cameraActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  secondaryButton: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#0F172A',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    fontWeight: '600',
-  },
-  captureButton: {
-    backgroundColor: '#0F172A',
   },
 });

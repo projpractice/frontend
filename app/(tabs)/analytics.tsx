@@ -12,7 +12,11 @@ import { useHistorySeries, useSummary, MAX_HISTORY_DAYS } from '@/hooks/use-hist
 import { dayjs } from '@/lib/dayjs';
 import type { SourceType, SummaryFilters } from '@/types/history';
 
-const sourceOptions: SourceType[] = ['image', 'video', 'webcam'];
+const sourceOptions: SourceType[] = ['image', 'video'];
+
+function isSupportedSource(value?: string | null): value is SourceType {
+  return typeof value === 'string' && sourceOptions.includes(value as SourceType);
+}
 
 export default function AnalyticsScreen() {
   const params = useLocalSearchParams<{ from?: string; to?: string; source?: string }>();
@@ -21,7 +25,8 @@ export default function AnalyticsScreen() {
   const now = dayjs();
   const defaultFrom = params.from && typeof params.from === 'string' ? params.from : now.subtract(7, 'day').format('YYYY-MM-DD');
   const defaultTo = params.to && typeof params.to === 'string' ? params.to : now.format('YYYY-MM-DD');
-  const defaultSource = (params.source as SourceType) ?? 'image';
+  const sourceParam = typeof params.source === 'string' ? params.source : undefined;
+  const defaultSource = isSupportedSource(sourceParam) ? sourceParam : 'image';
 
   const [draft, setDraft] = useState<SummaryFilters>({ from: defaultFrom, to: defaultTo, source_type: defaultSource });
   const [filters, setFilters] = useState<SummaryFilters>({ from: defaultFrom, to: defaultTo, source_type: defaultSource });

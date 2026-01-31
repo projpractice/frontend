@@ -4,7 +4,6 @@ import {
   API_BASE_URL,
   DETECT_IMAGE_ENDPOINT,
   DETECT_VIDEO_ENDPOINT,
-  STREAM_WS_ENDPOINT,
   USE_MOCK_RESPONSES,
 } from '@/constants/config';
 import { Colors, Fonts } from '@/constants/theme';
@@ -14,16 +13,13 @@ export default function DocsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Как подключиться к бэкенду</Text>
       <Text style={styles.paragraph}>
-        Клиент отправляет фотографии и отдельные кадры на{' '}
-        <Text style={styles.bold}>{DETECT_IMAGE_ENDPOINT}</Text>, а видео — на{' '}
-        <Text style={styles.bold}>{DETECT_VIDEO_ENDPOINT}</Text>. Для реального прямого эфира FastAPI также поднимает
-        WebSocket <Text style={styles.bold}>{STREAM_WS_ENDPOINT}</Text>. Интерфейс сейчас снимает кадр с камеры и шлёт его
-        как обычное изображение, чтобы сразу нарисовать bounding boxes в предпросмотре.
+        Клиент отправляет фотографии на <Text style={styles.bold}>{DETECT_IMAGE_ENDPOINT}</Text>, а видео — на{' '}
+        <Text style={styles.bold}>{DETECT_VIDEO_ENDPOINT}</Text>. Все ответы приходят в JSON/mp4 и сразу отображаются в UI.
       </Text>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Примеры запросов</Text>
-        <Text style={styles.paragraph}>Фото или кадр из камеры:</Text>
+        <Text style={styles.paragraph}>Фото:</Text>
         <View style={styles.codeBlock}>
           <Text style={styles.code}>
             {`curl -X POST ${DETECT_IMAGE_ENDPOINT} \\
@@ -39,11 +35,6 @@ export default function DocsScreen() {
   --output annotated_clip.mp4`}
           </Text>
         </View>
-        <Text style={styles.paragraph}>
-          Для постоянного стрима подключитесь к <Text style={styles.bold}>{STREAM_WS_ENDPOINT}</Text> и отправляйте
-          бинарные JPEG-кадры. Клиент берёт отдельный кадр и отправляет его в REST endpoint — так результат сразу
-          отображается на экране.
-        </Text>
       </View>
 
       <View style={styles.card}>

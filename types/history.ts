@@ -1,5 +1,3 @@
-import type { MediaType } from '@/types/detection';
-
 export type SourceType = 'image' | 'video' | 'stream' | 'webcam' | 'unknown';
 
 export type RequestStatus = 'success' | 'error' | 'processing' | 'queued' | 'unknown';
@@ -35,7 +33,7 @@ export type RequestDetails = HistoryItem & {
   dogs_with_muzzle?: number;
   raw_result_json?: unknown;
   parameters?: Record<string, unknown>;
-  media_type?: MediaType;
+  media_type?: SourceType;
 };
 
 type SummaryApiResponse = {

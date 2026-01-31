@@ -9,7 +9,6 @@ import type { BoundingBox, MediaAttachment, MediaType } from '@/types/detection'
 type DetectionPreviewProps = {
   mediaType: MediaType;
   attachment?: MediaAttachment | null;
-  streamUrl?: string;
   boxes?: BoundingBox[];
   fallbackMessage?: string;
 };
@@ -23,7 +22,6 @@ export function DetectionPreview({
   mediaType,
   attachment,
   boxes,
-  streamUrl,
   fallbackMessage,
 }: DetectionPreviewProps) {
   const [container, setContainer] = useState<ContainerSize>({ width: 0, height: 0 });
@@ -63,38 +61,10 @@ export function DetectionPreview({
       );
     }
 
-    if (mediaType === 'stream') {
-      if (attachment?.uri) {
-        if (attachment.mimeType?.startsWith('video/')) {
-          return (
-            <Video
-              source={{ uri: attachment.uri }}
-              style={styles.media}
-              resizeMode={ResizeMode.CONTAIN}
-              useNativeControls
-              isLooping
-            />
-          );
-        }
-        return <Image source={{ uri: attachment.uri }} contentFit="contain" style={styles.media} />;
-      }
-
-      if (streamUrl) {
-        return (
-          <View style={[styles.media, styles.streamContainer]}>
-            <Text style={styles.streamTitle}>Поток</Text>
-            <Text style={styles.streamValue} numberOfLines={2}>
-              {streamUrl}
-            </Text>
-          </View>
-        );
-      }
-    }
-
     return (
       <View style={[styles.media, styles.placeholder]}>
         <Text style={styles.placeholderText}>
-          {fallbackMessage ?? 'Загрузите файл или вставьте ссылку на поток'}
+          {fallbackMessage ?? 'Загрузите файл для визуализации'}
         </Text>
       </View>
     );
@@ -189,23 +159,6 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     textAlign: 'center',
     fontSize: 16,
-  },
-  streamContainer: {
-    padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#0F172A',
-  },
-  streamTitle: {
-    color: '#CBD5F5',
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  streamValue: {
-    color: '#F8FAFC',
-    fontSize: 18,
-    fontWeight: '600',
   },
   boundingBox: {
     position: 'absolute',

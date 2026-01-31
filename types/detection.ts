@@ -1,6 +1,6 @@
 import type { DocumentPickerAsset } from 'expo-document-picker';
 
-export type MediaType = 'image' | 'video' | 'stream';
+export type MediaType = 'image' | 'video';
 
 export type BoundingBox = {
   /**
@@ -42,7 +42,6 @@ export type MediaAttachment = {
   size?: number | null;
   asset?: DocumentPickerAsset;
   file?: Blob;
-  capturedAt?: number;
   width?: number;
   height?: number;
   isTemporary?: boolean;
@@ -51,5 +50,4 @@ export type MediaAttachment = {
 export type DetectionPayload = {
   mediaType: MediaType;
   attachment?: MediaAttachment;
-  streamUrl?: string;
 };

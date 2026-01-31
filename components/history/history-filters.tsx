@@ -21,7 +21,6 @@ const sourceOptions: { label: string; value: HistoryFilters['source_type'] }[] =
   { label: 'Все', value: 'all' },
   { label: 'Изображение', value: 'image' },
   { label: 'Видео', value: 'video' },
-  { label: 'Webcam', value: 'webcam' },
 ];
 
 export function HistoryFiltersPanel({

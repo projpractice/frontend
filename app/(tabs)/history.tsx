@@ -9,20 +9,29 @@ import { HistoryTable } from '@/components/history/history-table';
 import { RequestDetailsModal } from '@/components/history/request-details-modal';
 import { Colors } from '@/constants/theme';
 import { useHistoryList } from '@/hooks/use-history';
-import type { HistoryFilters, HistoryItem } from '@/types/history';
+import type { HistoryFilters, HistoryItem, SourceType } from '@/types/history';
 
 const LIMIT_OPTIONS = [20, 50, 100];
+const SUPPORTED_SOURCE_FILTERS: SourceType[] = ['image', 'video'];
+
+const normalizeSourceFilter = (value?: string): HistoryFilters['source_type'] => {
+  if (typeof value !== 'string') {
+    return 'all';
+  }
+  return SUPPORTED_SOURCE_FILTERS.includes(value as SourceType) ? (value as SourceType) : 'all';
+};
 
 export default function HistoryScreen() {
   const params = useLocalSearchParams<{ from?: string; to?: string; status?: string; source?: string; limit?: string }>();
   const router = useRouter();
 
   const defaultLimit = LIMIT_OPTIONS.includes(Number(params.limit)) ? Number(params.limit) : 20;
+  const sourceParam = typeof params.source === 'string' ? params.source : undefined;
   const defaultFilters: HistoryFilters = {
     from: typeof params.from === 'string' ? params.from : undefined,
     to: typeof params.to === 'string' ? params.to : undefined,
     status: (params.status as HistoryFilters['status']) ?? 'all',
-    source_type: (params.source as HistoryFilters['source_type']) ?? 'all',
+    source_type: normalizeSourceFilter(sourceParam),
     limit: defaultLimit,
     offset: 0,
   };

@@ -193,11 +193,8 @@ function guessMimeType(mediaType: MediaType) {
   switch (mediaType) {
     case 'video':
       return 'video/mp4';
-    case 'image':
-    case 'stream':
-      return 'image/jpeg';
     default:
-      return 'application/octet-stream';
+      return 'image/jpeg';
   }
 }
 
@@ -283,22 +280,6 @@ async function mockDetection(mediaType: MediaType): Promise<DetectionResponse> {
 }
 
 function buildDemoBoxes(mediaType: MediaType): BoundingBox[] {
-  if (mediaType === 'image') {
-    return [
-      {
-        id: 'dog-1',
-        label: 'Dog w/ muzzle',
-        confidence: 0.94,
-        box: {
-          x: 0.08,
-          y: 0.12,
-          width: 0.55,
-          height: 0.68,
-        },
-      },
-    ];
-  }
-
   if (mediaType === 'video') {
     return [
       {
@@ -330,10 +311,15 @@ function buildDemoBoxes(mediaType: MediaType): BoundingBox[] {
 
   return [
     {
-      id: 'stream-box',
-      label: 'Dog stream',
-      confidence: 0.73,
-      box: { x: 0.35, y: 0.26, width: 0.3, height: 0.4 },
+      id: 'dog-1',
+      label: 'Dog w/ muzzle',
+      confidence: 0.94,
+      box: {
+        x: 0.08,
+        y: 0.12,
+        width: 0.55,
+        height: 0.68,
+      },
     },
   ];
 }
